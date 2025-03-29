@@ -4,29 +4,30 @@
 <title>Get Data from Google Sheet</title>
 <script>
   function fetchData() {
-    const publishedUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS3LPzNK6lLHuYpzyBO-534D5Gx696_kWpnfCCzu6qPat633qJLsswmADacn_v2dl26CSIJzLdLTv3n/pubhtml';
-    const gid = '2110901138';
+    const spreadsheetId = 'YOUR_SPREADSHEET_ID'; // Replace with your Google Sheet ID
+    const sheetName = 'Sheet1'; // Replace with the name of your sheet
 
     // Construct the Google Sheets API URL for JSON output
-    const url = `https://docs.google.com/spreadsheets/d/e/2PACX-1vS3LPzNK6lLHuYpzyBO-534D5Gx696_kWpnfCCzu6qPat633qJLsswmADacn_v2dl26CSIJzLdLTv3n/pub?gid=${gid}&single=true&output=csv`;
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
 
     fetch(url)
       .then(response => response.text())
       .then(data => {
-        displayDataAsTable(data);
+        // Clean up the JSONP wrapper
+        const jsonData = JSON.parse(data.substring(data.indexOf('{'), data.lastIndexOf('}') + 1));
+        displayData(jsonData);
       })
       .catch(error => {
         document.getElementById('dataContainer').innerText = 'Error fetching data: ' + error;
       });
   }
 
-  function displayDataAsTable(csvData) {
+  function displayData(jsonData) {
     const dataContainer = document.getElementById('dataContainer');
     dataContainer.innerHTML = ''; // Clear previous data
 
-    const lines = csvData.trim().split('\n');
-    if (lines.length === 0) {
-      dataContainer.innerText = 'No data found.';
+    if (!jsonData.table || !jsonData.table.rows) {
+      dataContainer.innerText = 'No data found in the sheet.';
       return;
     }
 
@@ -34,28 +35,30 @@
     const thead = document.createElement('thead');
     const tbody = document.createElement('tbody');
 
-    // Create table header
-    const headerRow = document.createElement('tr');
-    const headers = lines[0].split(',');
-    headers.forEach(headerText => {
-      const th = document.createElement('th');
-      th.textContent = headerText.trim();
-      headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Create table body rows
-    for (let i = 1; i < lines.length; i++) {
-      const dataRow = document.createElement('tr');
-      const cells = lines[i].split(',');
-      cells.forEach(cellText => {
-        const td = document.createElement('td');
-        td.textContent = cellText.trim();
-        dataRow.appendChild(td);
+    // Create table headers
+    if (jsonData.table.cols) {
+      const headerRow = document.createElement('tr');
+      jsonData.table.cols.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label || col.id;
+        headerRow.appendChild(th);
       });
-      tbody.appendChild(dataRow);
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
     }
+
+    // Create table rows
+    jsonData.table.rows.forEach(row => {
+      const tr = document.createElement('tr');
+      if (row.c) {
+        row.c.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell ? cell.v : '';
+          tr.appendChild(td);
+        });
+      }
+      tbody.appendChild(tr);
+    });
 
     table.appendChild(tbody);
     dataContainer.appendChild(table);
