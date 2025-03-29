@@ -1,1 +1,92 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Get Data from Google Sheet</title>
+<script>
+  function fetchData() {
+    const spreadsheetId = 'YOUR_SPREADSHEET_ID'; // Replace with your Google Sheet ID
+    const sheetName = 'Sheet1'; // Replace with the name of your sheet
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
+
+    fetch(url)
+      .then(response => response.text())
+      .then(data => {
+        // Clean up the JSONP wrapper
+        const jsonData = JSON.parse(data.substring(data.indexOf('{'), data.lastIndexOf('}') + 1));
+        displayData(jsonData);
+      })
+      .catch(error => {
+        document.getElementById('dataContainer').innerText = 'Error fetching data: ' + error;
+      });
+  }
+
+  function displayData(jsonData) {
+    const dataContainer = document.getElementById('dataContainer');
+    dataContainer.innerHTML = ''; // Clear previous data
+
+    if (!jsonData.table || !jsonData.table.rows) {
+      dataContainer.innerText = 'No data found in the sheet.';
+      return;
+    }
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+
+    // Create table headers
+    if (jsonData.table.cols) {
+      const headerRow = document.createElement('tr');
+      jsonData.table.cols.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.label || col.id;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+    }
+
+    // Create table rows
+    jsonData.table.rows.forEach(row => {
+      const tr = document.createElement('tr');
+      if (row.c) {
+        row.c.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell ? cell.v : '';
+          tr.appendChild(td);
+        });
+      }
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    dataContainer.appendChild(table);
+  }
+
+  window.onload = fetchData; // Fetch data when the page loads
+</script>
+<style>
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Data from Google Sheet</h1>
+
+  <div id="dataContainer">
+    Loading data...
+  </div>
+
+</body>
+</html>
